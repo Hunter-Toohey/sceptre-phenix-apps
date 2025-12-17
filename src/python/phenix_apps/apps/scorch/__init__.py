@@ -124,7 +124,19 @@ class ComponentBase(object):
 
         orig_logger_log = logger.log
 
-        logger.log = self.mirrored_logger_log
+        # mirror logger.log into stdout so it gets captured in our buffer
+        def mirrored_logger_log(level, msg, orig_logger_log):
+            try:
+                tstamp = time.strftime('%H:%M:%S')
+
+                # by printing here, we add the logger logs to stdout, 
+                # which we later add to the buffer
+                print(f'[{tstamp}] {level} : {msg}', flush=True)
+            except Exception:
+                pass
+            orig_logger_log(level, msg)
+
+        logger.log = mirrored_logger_log
 
         start = time.time()
 
@@ -163,20 +175,8 @@ class ComponentBase(object):
         with open(info_file, 'w') as f:
             json.dump(content, f, indent=4)
 
-    # mirror logger.log into stdout so it gets captured in our buffer
-    def mirrored_logger_log(level, msg):
-        try:
-            tstamp = time.strftime('%H:%M:%S')
-
-            # by printing here, we add the logger logs to stdout, 
-            # which we later add to the buffer
-            print(f'[{tstamp}] {level} : {msg}', flush=True)
-        except Exception:
-            pass
-        orig_logger_log(level, msg)
-
     # format input streams into lines of json
-    def format_stream(s: str) -> list:
+    def format_stream(self, s: str) -> list:
         if not s:
             return []
         return [ln.strip() for ln in s.splitlines() if ln.strip()]
