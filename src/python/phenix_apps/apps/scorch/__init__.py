@@ -9,7 +9,6 @@ import io
 from contextlib import redirect_stdout, redirect_stderr
 import json
 import io
-import logging
 
 from phenix_apps.common.settings import PHENIX_DIR
 from phenix_apps.common import logger, utils
@@ -156,10 +155,6 @@ class ComponentBase(object):
         end = time.time()
 
         info_file = os.path.join(self.base_dir, f'{self.exp_name}-run-{self.run}-{self.name}-loop-{self.loop}-count-{self.count}-{self.stage}-info.json')
-        def _format_stream(s: str) -> list:
-            if not s:
-                return []
-            return [ln.strip() for ln in s.splitlines() if ln.strip()]
 
         content = {
             "experiment": self.exp_name,
@@ -176,6 +171,11 @@ class ComponentBase(object):
         }
         with open(info_file, 'w') as f:
             json.dump(content, f, indent=4)
+
+    def _format_stream(self, s: str) -> list:
+        if not s:
+            return []
+        return [ln.strip() for ln in s.splitlines() if ln.strip()]
 
     @property
     def mm(self) -> minimega.minimega:
