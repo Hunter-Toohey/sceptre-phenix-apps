@@ -131,7 +131,7 @@ class ComponentBase(object):
         orig_logger_log = logger.log
 
         # override phenix's logger to save to the buffer w
-        logger.log = self.buffer_logger_log(level, msg, log_buffer, orig_logger_log)
+        logger.log = lambda level, msg: self.buffer_logger_log(level, msg, log_buffer, orig_logger_log)
 
         start = time.time()
         
