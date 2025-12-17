@@ -139,7 +139,7 @@ class ComponentBase(object):
         formatter = logging.Formatter('[%(asctime)s] %(levelname)s : %(message)s', datefmt='%H:%M:%S')
         handler.setFormatter(formatter)
 
-        phenix_logger.logger.addHandler(handler)
+        logger.logger.addHandler(handler)
 
         start = time.time()
         
