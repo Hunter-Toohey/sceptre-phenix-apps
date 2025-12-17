@@ -122,24 +122,24 @@ class ComponentBase(object):
             'cleanup'   : self.cleanup
         }
 
-        # create the buffers that will capture stdout and stderr
+        # Buffers for capturing output
         stdout_buffer = io.StringIO()
         stderr_buffer = io.StringIO()
-        log_bugger = io.StringIO()
+        log_buffer = io.StringIO()
 
-        class BufferHandler(logging.Handler):
-            def __init__(self, buffer_io):
-                super().__init__()
-                self._buffer = buffer_io
+        # Save original logger function
+        orig_logger_log = logger.log
 
-            def emit(self, record):
-                self._buffer.write(self.format(record) + "\n")
+        # Override logger.log to also write to our buffer
+        def buffer_logger_log(level, msg):
+            try:
+                tstamp = time.strftime('%H:%M:%S')
+                log_buffer.write(f'[{tstamp}] {level} : {msg}\n')
+            except Exception:
+                pass
+            orig_logger_log(level, msg)
 
-        handler = BufferHandler(log_buffer)
-        formatter = logging.Formatter('[%(asctime)s] %(levelname)s : %(message)s', datefmt='%H:%M:%S')
-        handler.setFormatter(formatter)
-
-        logger.logger.addHandler(handler)
+        logger.log = buffer_logger_log
 
         start = time.time()
         
