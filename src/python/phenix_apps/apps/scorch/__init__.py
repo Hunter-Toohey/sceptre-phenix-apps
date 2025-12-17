@@ -127,10 +127,10 @@ class ComponentBase(object):
         stderr_buffer = io.StringIO()
         log_buffer = io.StringIO()
 
-        # save the original logger.log method before we override it
         orig_logger_log = logger.log
 
-        # override phenix's logger to save to the buffer w
+        # override phenix's logger to save to the buffer
+        # we use a lambda function because level and msg do not exist until the logger calls this function
         logger.log = lambda level, msg: self.buffer_logger_log(level, msg, log_buffer, orig_logger_log)
 
         start = time.time()
@@ -167,6 +167,7 @@ class ComponentBase(object):
         with open(info_file, 'w') as f:
             json.dump(content, f, indent=4)
 
+    # override phenix's logger buffer_logger_log to also save to our buffer
     def buffer_logger_log(self, level, msg, log_buffer, orig_logger_log):
         try:
             tstamp = time.strftime('%H:%M:%S')
