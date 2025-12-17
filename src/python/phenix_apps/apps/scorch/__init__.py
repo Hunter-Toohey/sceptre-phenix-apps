@@ -142,27 +142,6 @@ class ComponentBase(object):
         stdout_buffer = io.StringIO()
         stderr_buffer = io.StringIO()
         
-        class _BufferHandler(logging.Handler):
-            """
-            Logging handler that mirrors formatted log records into a StringIO
-            """
-
-            # override the logger.handler init method to user the buffer
-            def __init__(self, buffer_io: io.StringIO):
-                super().__init__()
-                self._buffer = buffer_io
-            
-            # override the logger.handler standard emit method to write to our buffer
-            def emit(self, record: logging.LogRecord) -> None:
-                try:
-                    msg = self.format(record) + "\n"
-                    try:
-                        self._buffer.write(msg)
-                    except Exception as ex:
-                        logger.log("ERROR", f"failed to write log message to buffer: {ex}")
-                except Exception as ex:
-                    logger.log("ERROR", f"failed to format log message: {ex}")
-        
         # redirect stdout and stderr to our buffers
         try:
             with redirect_stdout(stdout_buffer), redirect_stderr(stderr_buffer):
