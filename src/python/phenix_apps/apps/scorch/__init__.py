@@ -122,24 +122,26 @@ class ComponentBase(object):
             'cleanup'   : self.cleanup
         }
 
-        orig_logger_log = logger.log
-
-        # mirror logger.log into stdout so it gets captured in our buffer
-        def mirror_logger_log(level, msg):
-            try:
-                tstamp = time.strftime('%H:%M:%S')
-                print(f'[{tstamp}] {level} : {msg}', flush=True)
-            except Exception:
-                pass
-            orig_logger_log(level, msg)
-
-        logger.log = mirror_logger_log
-
-        start = time.time()
-
         # create the buffers that will capture stdout and stderr
         stdout_buffer = io.StringIO()
         stderr_buffer = io.StringIO()
+        log_bugger = io.StringIO()
+
+        class BufferHandler(logging.Handler):
+            def __init__(self, buffer_io):
+                super().__init__()
+                self._buffer = buffer_io
+
+            def emit(self, record):
+                self._buffer.write(self.format(record) + "\n")
+
+        handler = BufferHandler(log_buffer)
+        formatter = logging.Formatter('[%(asctime)s] %(levelname)s : %(message)s', datefmt='%H:%M:%S')
+        handler.setFormatter(formatter)
+
+        phenix_logger.logger.addHandler(handler)
+
+        start = time.time()
         
         # redirect stdout and stderr to our buffers
         try:
