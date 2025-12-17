@@ -122,24 +122,16 @@ class ComponentBase(object):
             'cleanup'   : self.cleanup
         }
 
-        # Buffers for capturing output
+        # create the buffers that will capture stdout, stderr, and the logger
         stdout_buffer = io.StringIO()
         stderr_buffer = io.StringIO()
         log_buffer = io.StringIO()
 
-        # Save original logger function
+        # save the original logger.log method before we override it
         orig_logger_log = logger.log
 
-        # Override logger.log to also write to our buffer
-        def buffer_logger_log(level, msg):
-            try:
-                tstamp = time.strftime('%H:%M:%S')
-                log_buffer.write(f'[{tstamp}] {level} : {msg}\n')
-            except Exception:
-                pass
-            orig_logger_log(level, msg)
-
-        logger.log = buffer_logger_log
+        # override phenix's logger to save to the buffer w
+        logger.log = self.buffer_logger_log(level, msg, log_buffer, orig_logger_log)
 
         start = time.time()
         
@@ -174,6 +166,14 @@ class ComponentBase(object):
         }
         with open(info_file, 'w') as f:
             json.dump(content, f, indent=4)
+
+    def buffer_logger_log(self, level, msg, log_buffer, orig_logger_log):
+        try:
+            tstamp = time.strftime('%H:%M:%S')
+            log_buffer.write(f'[{tstamp}] {level} : {msg}\n')
+        except Exception as ex:
+            print(f"Error writing to log buffer: {ex}")
+        orig_logger_log(level, msg)
 
     def format_stream(self, s: str) -> list:
         if not s:
