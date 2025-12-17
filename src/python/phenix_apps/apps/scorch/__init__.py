@@ -124,7 +124,7 @@ class ComponentBase(object):
 
         orig_logger_log = logger.log
 
-        logger.log = mirrored_logger_log
+        logger.log = self.mirrored_logger_log
 
         start = time.time()
 
@@ -157,8 +157,8 @@ class ComponentBase(object):
             "start_time": time.strftime("%Y-%m-%dT%H-%M-%SZ", time.gmtime(start)),
             "end_time": time.strftime("%Y-%m-%dT%H-%M-%SZ", time.gmtime(end)),
             "return": out,
-            "stdout": format_stream(stdout_buffer.getvalue()),
-            "stderr": format_stream(stderr_buffer.getvalue())
+            "stdout": self.format_stream(stdout_buffer.getvalue()),
+            "stderr": self.format_stream(stderr_buffer.getvalue())
         }
         with open(info_file, 'w') as f:
             json.dump(content, f, indent=4)
