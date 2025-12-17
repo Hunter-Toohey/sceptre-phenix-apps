@@ -125,7 +125,7 @@ class ComponentBase(object):
         orig_logger_log = logger.log
 
         # mirror logger.log into stdout so it gets captured in our buffer
-        def _mirrored_logger_log(level, msg):
+        def mirror_logger_log(level, msg):
             try:
                 tstamp = time.strftime('%H:%M:%S')
                 print(f'[{tstamp}] {level} : {msg}', flush=True)
@@ -133,7 +133,7 @@ class ComponentBase(object):
                 pass
             orig_logger_log(level, msg)
 
-        logger.log = _mirrored_logger_log
+        logger.log = mirror_logger_log
 
         start = time.time()
 
@@ -166,13 +166,13 @@ class ComponentBase(object):
             "start_time": time.strftime("%Y-%m-%dT%H-%M-%SZ", time.gmtime(start)),
             "end_time": time.strftime("%Y-%m-%dT%H-%M-%SZ", time.gmtime(end)),
             "return": out,
-            "stdout": self._format_stream(stdout_buffer.getvalue()),
-            "stderr": self._format_stream(stderr_buffer.getvalue())
+            "stdout": self.format_stream(stdout_buffer.getvalue()),
+            "stderr": self.format_stream(stderr_buffer.getvalue())
         }
         with open(info_file, 'w') as f:
             json.dump(content, f, indent=4)
 
-    def _format_stream(self, s: str) -> list:
+    def format_stream(self, s: str) -> list:
         if not s:
             return []
         return [ln.strip() for ln in s.splitlines() if ln.strip()]
