@@ -9,7 +9,6 @@ import io
 from contextlib import redirect_stdout, redirect_stderr
 import json
 import io
-import logging
 
 from phenix_apps.common.settings import PHENIX_DIR
 from phenix_apps.common import logger, utils
@@ -125,20 +124,11 @@ class ComponentBase(object):
 
         orig_logger_log = logger.log
 
-        # mirror logger.log into stdout so it gets captured in our buffer
-        def _mirrored_logger_log(level, msg):
-            try:
-                tstamp = time.strftime('%H:%M:%S')
-                print(f'[{tstamp}] {level} : {msg}', flush=True)
-            except Exception:
-                pass
-            orig_logger_log(level, msg)
-
-        logger.log = _mirrored_logger_log
+        logger.log = mirrored_logger_log
 
         start = time.time()
 
-        # create the buffers that will capture stdout and stderr
+        # create the buffers that will capture stdout (including logger logs now) and stderr
         stdout_buffer = io.StringIO()
         stderr_buffer = io.StringIO()
         
@@ -156,10 +146,6 @@ class ComponentBase(object):
         end = time.time()
 
         info_file = os.path.join(self.base_dir, f'{self.exp_name}-run-{self.run}-{self.name}-loop-{self.loop}-count-{self.count}-{self.stage}-info.json')
-        def _format_stream(s: str) -> list:
-            if not s:
-                return []
-            return [ln.strip() for ln in s.splitlines() if ln.strip()]
 
         content = {
             "experiment": self.exp_name,
@@ -171,11 +157,29 @@ class ComponentBase(object):
             "start_time": time.strftime("%Y-%m-%dT%H-%M-%SZ", time.gmtime(start)),
             "end_time": time.strftime("%Y-%m-%dT%H-%M-%SZ", time.gmtime(end)),
             "return": out,
-            "stdout": _format_stream(stdout_buffer.getvalue()),
-            "stderr": _format_stream(stderr_buffer.getvalue())
+            "stdout": format_stream(stdout_buffer.getvalue()),
+            "stderr": format_stream(stderr_buffer.getvalue())
         }
         with open(info_file, 'w') as f:
             json.dump(content, f, indent=4)
+
+    # mirror logger.log into stdout so it gets captured in our buffer
+    def mirrored_logger_log(level, msg):
+        try:
+            tstamp = time.strftime('%H:%M:%S')
+
+            # by printing here, we add the logger logs to stdout, 
+            # which we later add to the buffer
+            print(f'[{tstamp}] {level} : {msg}', flush=True)
+        except Exception:
+            pass
+        orig_logger_log(level, msg)
+
+    # format input streams into lines of json
+    def format_stream(s: str) -> list:
+        if not s:
+            return []
+        return [ln.strip() for ln in s.splitlines() if ln.strip()]
 
     @property
     def mm(self) -> minimega.minimega:
