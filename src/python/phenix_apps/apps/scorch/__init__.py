@@ -166,8 +166,8 @@ class ComponentBase(object):
             "start_time": time.strftime("%Y-%m-%dT%H-%M-%SZ", time.gmtime(start)),
             "end_time": time.strftime("%Y-%m-%dT%H-%M-%SZ", time.gmtime(end)),
             "return": out,
-            "stdout": _format_stream(stdout_buffer.getvalue()),
-            "stderr": _format_stream(stderr_buffer.getvalue())
+            "stdout": self._format_stream(stdout_buffer.getvalue()),
+            "stderr": self._format_stream(stderr_buffer.getvalue())
         }
         with open(info_file, 'w') as f:
             json.dump(content, f, indent=4)
