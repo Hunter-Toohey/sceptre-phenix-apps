@@ -9,6 +9,7 @@ import io
 from contextlib import redirect_stdout, redirect_stderr
 import json
 import io
+import logging
 
 from phenix_apps.common.settings import PHENIX_DIR
 from phenix_apps.common import logger, utils
@@ -125,24 +126,42 @@ class ComponentBase(object):
         orig_logger_log = logger.log
 
         # mirror logger.log into stdout so it gets captured in our buffer
-        def mirrored_logger_log(level, msg, orig_logger_log):
+        def _mirrored_logger_log(level, msg):
             try:
                 tstamp = time.strftime('%H:%M:%S')
-
-                # by printing here, we add the logger logs to stdout, 
-                # which we later add to the buffer
                 print(f'[{tstamp}] {level} : {msg}', flush=True)
             except Exception:
                 pass
             orig_logger_log(level, msg)
 
-        logger.log = mirrored_logger_log
+        logger.log = _mirrored_logger_log
 
         start = time.time()
 
-        # create the buffers that will capture stdout (including logger logs now) and stderr
+        # create the buffers that will capture stdout and stderr
         stdout_buffer = io.StringIO()
         stderr_buffer = io.StringIO()
+        
+        class _BufferHandler(logging.Handler):
+            """
+            Logging handler that mirrors formatted log records into a StringIO
+            """
+
+            # override the logger.handler init method to user the buffer
+            def __init__(self, buffer_io: io.StringIO):
+                super().__init__()
+                self._buffer = buffer_io
+            
+            # override the logger.handler standard emit method to write to our buffer
+            def emit(self, record: logging.LogRecord) -> None:
+                try:
+                    msg = self.format(record) + "\n"
+                    try:
+                        self._buffer.write(msg)
+                    except Exception as ex:
+                        logger.log("ERROR", f"failed to write log message to buffer: {ex}")
+                except Exception as ex:
+                    logger.log("ERROR", f"failed to format log message: {ex}")
         
         # redirect stdout and stderr to our buffers
         try:
@@ -158,6 +177,10 @@ class ComponentBase(object):
         end = time.time()
 
         info_file = os.path.join(self.base_dir, f'{self.exp_name}-run-{self.run}-{self.name}-loop-{self.loop}-count-{self.count}-{self.stage}-info.json')
+        def _format_stream(s: str) -> list:
+            if not s:
+                return []
+            return [ln.strip() for ln in s.splitlines() if ln.strip()]
 
         content = {
             "experiment": self.exp_name,
@@ -169,17 +192,11 @@ class ComponentBase(object):
             "start_time": time.strftime("%Y-%m-%dT%H-%M-%SZ", time.gmtime(start)),
             "end_time": time.strftime("%Y-%m-%dT%H-%M-%SZ", time.gmtime(end)),
             "return": out,
-            "stdout": self.format_stream(stdout_buffer.getvalue()),
-            "stderr": self.format_stream(stderr_buffer.getvalue())
+            "stdout": _format_stream(stdout_buffer.getvalue()),
+            "stderr": _format_stream(stderr_buffer.getvalue())
         }
         with open(info_file, 'w') as f:
             json.dump(content, f, indent=4)
-
-    # format input streams into lines of json
-    def format_stream(self, s: str) -> list:
-        if not s:
-            return []
-        return [ln.strip() for ln in s.splitlines() if ln.strip()]
 
     @property
     def mm(self) -> minimega.minimega:
