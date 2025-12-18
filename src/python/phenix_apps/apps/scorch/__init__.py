@@ -8,7 +8,8 @@ from pathlib import Path
 import io
 from contextlib import redirect_stdout, redirect_stderr
 import json
-import io
+import subprocess
+import threading
 
 from phenix_apps.common.settings import PHENIX_DIR
 from phenix_apps.common import logger, utils
@@ -134,7 +135,59 @@ class ComponentBase(object):
         logger.log = lambda level, msg: self.buffer_logger_log(level, msg, log_buffer, orig_logger_log)
 
         start = time.time()
-        
+
+        # patch subprocess.Popen temporarily so child processes write to pipes
+        orig_popen = subprocess.Popen
+
+        def _reader(pipe, buffer_io, echo_stream=None):
+            try:
+                # pipe is a text stream when text=True is used
+                while True:
+                    line = pipe.readline()
+                    if not line:
+                        break
+                    try:
+                        buffer_io.write(line)
+                        if echo_stream:
+                            try:
+                                echo_stream.write(line)
+                                echo_stream.flush()
+                            except Exception:
+                                pass
+                    except Exception:
+                        # swallow to avoid crashing reader thread
+                        pass
+            except Exception:
+                pass
+
+        def _patched_popen(*p_args, **p_kwargs):
+            # ensure stdout/stderr are pipes and text mode is enabled
+            if p_kwargs.get('stdout') is None:
+                p_kwargs['stdout'] = subprocess.PIPE
+            if p_kwargs.get('stderr') is None:
+                p_kwargs['stderr'] = subprocess.PIPE
+            # prefer text mode for easier line iteration
+            p_kwargs.setdefault('text', True)
+            p_kwargs.setdefault('universal_newlines', True)
+            p_kwargs.setdefault('bufsize', 1)
+
+            proc = orig_popen(*p_args, **p_kwargs)
+
+            # spawn reader threads to mirror child output into our buffers
+            try:
+                if proc.stdout is not None:
+                    t = threading.Thread(target=_reader, args=(proc.stdout, stdout_buffer, sys.__stdout__), daemon=True)
+                    t.start()
+                if proc.stderr is not None:
+                    t2 = threading.Thread(target=_reader, args=(proc.stderr, stderr_buffer, sys.__stderr__), daemon=True)
+                    t2.start()
+            except Exception:
+                pass
+
+            return proc
+
+        subprocess.Popen = _patched_popen
+
         # redirect stdout and stderr to our buffers
         try:
             with redirect_stdout(stdout_buffer), redirect_stderr(stderr_buffer):
@@ -142,13 +195,18 @@ class ComponentBase(object):
         except Exception as ex:
             out = f"Error occurred: {ex}"
         finally:
+            # restore patched globals and flush buffers
+            subprocess.Popen = orig_popen
             stdout_buffer.flush()
             stderr_buffer.flush()
             logger.log = orig_logger_log
 
         end = time.time()
 
-        info_file = os.path.join(self.base_dir, f'{self.exp_name}-run-{self.run}-{self.name}-loop-{self.loop}-count-{self.count}-{self.stage}-info.json')
+        start_ts = time.strftime("%Y-%m-%dT%H-%M-%SZ", time.gmtime(start))
+        end_ts = time.strftime("%Y-%m-%dT%H-%M-%SZ", time.gmtime(end))
+
+        info_file = os.path.join(self.base_dir, f'info-{self.exp_name}-run-{self.run}-{self.name}-loop-{self.loop}-count-{self.count}-{self.stage}-{start_ts}.json')
 
         content = {
             "experiment": self.exp_name,
@@ -157,12 +215,12 @@ class ComponentBase(object):
             "loop": self.loop,
             "count": self.count,
             "stage": self.stage,
-            "start_time": time.strftime("%Y-%m-%dT%H-%M-%SZ", time.gmtime(start)),
-            "end_time": time.strftime("%Y-%m-%dT%H-%M-%SZ", time.gmtime(end)),
+            "start_time": start_ts,
+            "end_time": end_ts,
             "return": out,
             "stdout": self.format_stream(stdout_buffer.getvalue()),
             "stderr": self.format_stream(stderr_buffer.getvalue()),
-            "log": self.format_stream(log_buffer.getvalue())
+            "logs": self.format_stream(log_buffer.getvalue())
         }
         with open(info_file, 'w') as f:
             json.dump(content, f, indent=4)
@@ -170,13 +228,13 @@ class ComponentBase(object):
     # override phenix's logger buffer_logger_log to also save to our buffer
     def buffer_logger_log(self, level, msg, log_buffer, orig_logger_log):
         try:
-            tstamp = time.strftime('%H:%M:%S')
+            tstamp = time.strftime("%Y-%m-%dT%H-%M-%SZ")
             log_buffer.write(f'[{tstamp}] {level} : {msg}\n')
         except Exception as ex:
             print(f"Error writing to log buffer: {ex}")
         orig_logger_log(level, msg)
 
-    def format_stream(self, s: str) -> list:
+    def format_stream(self, s):
         if not s:
             return []
         return [ln.strip() for ln in s.splitlines() if ln.strip()]
