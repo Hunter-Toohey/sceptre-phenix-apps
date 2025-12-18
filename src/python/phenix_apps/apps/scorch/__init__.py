@@ -21,17 +21,34 @@ class TeeIO:
     Class that duplicates stdout and stderr to a buffer as well as
     the normal stream
     """
-    def __init__(self, original, buffer):
-        self.original = original
-        self.buffer = buffer
+    def __init__(self, *streams):
+        self.streams = streams
+        self.encoding = getattr(streams[0], "encoding", "utf-8")
 
     def write(self, s):
-        self.original.write(s)
-        self.buffer.write(s)
+        for stream in self.streams:
+            try:
+                stream.write(s)
+            except Exception:
+                pass
+        return len(s)
 
     def flush(self):
-        self.original.flush()
-        self.buffer.flush()
+        for stream in self.streams:
+            try:
+                stream.flush()
+            except Exception:
+                pass
+
+    def writelines(self, lines):
+        for line in lines:
+            self.write(line)
+
+    def isatty(self):
+        return False
+
+    def fileno(self):
+        raise OSError("TeeIO does not have a file descriptor")
 
 
 class ComponentBase(object):
