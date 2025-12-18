@@ -27,28 +27,14 @@ class TeeIO:
 
     def write(self, s):
         for stream in self.streams:
-            try:
-                stream.write(s)
-            except Exception:
-                pass
+            stream.write(s)
         return len(s)
 
     def flush(self):
         for stream in self.streams:
-            try:
-                stream.flush()
-            except Exception:
-                pass
+            stream.flush()
 
-    def writelines(self, lines):
-        for line in lines:
-            self.write(line)
 
-    def isatty(self):
-        return False
-
-    def fileno(self):
-        raise OSError("TeeIO does not have a file descriptor")
 
 
 class ComponentBase(object):
