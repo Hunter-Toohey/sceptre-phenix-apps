@@ -16,6 +16,23 @@ from box import Box
 from elasticsearch import Elasticsearch
 import minimega
 
+class TeeIO:
+    """
+    Class that duplicates stdout and stderr to a buffer as well as
+    the normal stream
+    """
+    def __init__(self, original, buffer):
+        self.original = original
+        self.buffer = buffer
+
+    def write(self, s):
+        self.original.write(s)
+        self.buffer.write(s)
+
+    def flush(self):
+        self.original.flush()
+        self.buffer.flush()
+
 
 class ComponentBase(object):
     valid_stages = ["configure", "start", "stop", "cleanup"]
@@ -172,23 +189,6 @@ class ComponentBase(object):
         }
         with open(info_file, 'w') as f:
             json.dump(content, f, indent=4)
-    
-    class TeeIO:
-        """
-        Class that duplicates stdout and stderr to a buffer as well as
-        the normal stream
-        """
-        def __init__(self, original, buffer):
-            self.original = original
-            self.buffer = buffer
-
-        def write(self, s):
-            self.original.write(s)
-            self.buffer.write(s)
-
-        def flush(self):
-            self.original.flush()
-            self.buffer.flush()
 
     # override phenix's logger buffer_logger_log to also save to our buffer
     def buffer_logger_log(self, level, msg, log_buffer, orig_logger_log):
