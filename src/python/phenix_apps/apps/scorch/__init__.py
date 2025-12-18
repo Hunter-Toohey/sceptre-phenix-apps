@@ -179,8 +179,10 @@ class ComponentBase(object):
         except Exception as ex:
             out = f"Error occurred: {ex}"
         finally:
-            stdout_buffer.flush()
-            stderr_buffer.flush()
+            #stdout_buffer.flush()
+            #stderr_buffer.flush()
+            sys.stdout = orig_stdout
+            sys.stderr = orig_stderr
             logger.log = orig_logger_log
 
         end = time.time()
