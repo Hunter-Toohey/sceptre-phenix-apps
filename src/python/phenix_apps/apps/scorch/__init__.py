@@ -237,22 +237,19 @@ class ComponentBase(object):
         self._mm = mm_obj
 
     def mm_init(self, namespaced: bool = True) -> minimega.minimega:
-        """
-        The minimega.connect function will print a message to STDOUT if there is
-        a version mismatch. This utility function prevents that from happening.
-        """
+        saved_stdout = sys.stdout
 
-        sys.stdout = open('/dev/null', 'w')
+        try:
+            sys.stdout = open('/dev/null', 'w')
 
-        mm = None
+            if namespaced:
+                mm = minimega.connect(namespace=self.exp_name)
+            else:
+                mm = minimega.connect()
 
-        if namespaced:
-            mm = minimega.connect(namespace=self.exp_name)
-        else:
-            mm = minimega.connect()
-
-        sys.stdout.close()
-        sys.stdout = sys.__stdout__
+        finally:
+            sys.stdout.close()
+            sys.stdout = saved_stdout   # ← restore TeeIO, not sys.__stdout__
 
         return mm
 
