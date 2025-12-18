@@ -34,9 +34,6 @@ class TeeIO:
         for stream in self.streams:
             stream.flush()
 
-
-
-
 class ComponentBase(object):
     valid_stages = ["configure", "start", "stop", "cleanup"]
 
@@ -147,6 +144,12 @@ class ComponentBase(object):
         log_buffer = io.StringIO()
 
         orig_logger_log = logger.log
+        orig_stdout_stream = sys.stdout
+        orig_stderr_stream = sys.stderr
+
+        # override stdout and stderr to use our custom teeIO class to save to our buffers
+        sys.stdout = TeeIO(orig_stdout_stream, stdout_buffer)
+        sys.stderr = TeeIO(orig_stderr_stream, stderr_buffer)
 
         # override phenix's logger to save to the buffer
         # we use a lambda function because level and msg do not exist until the logger calls this function
@@ -156,13 +159,14 @@ class ComponentBase(object):
 
         # redirect stdout and stderr to our buffers
         try:
-            with redirect_stdout(stdout_buffer), redirect_stderr(stderr_buffer):
-                out = stages_dict[self.stage]() or ""
+            out = stages_dict[self.stage]() or ""
         except Exception as ex:
             out = f"Error occurred: {ex}"
         finally:
             stdout_buffer.flush()
             stderr_buffer.flush()
+            sys.stdout = orig_stdout_stream
+            sys.stderr = orig_stderr_stream
             logger.log = orig_logger_log
 
         end = time.time()
@@ -222,6 +226,8 @@ class ComponentBase(object):
         a version mismatch. This utility function prevents that from happening.
         """
 
+        saved_stdout = sys.stdout
+
         sys.stdout = open('/dev/null', 'w')
 
         mm = None
@@ -232,7 +238,7 @@ class ComponentBase(object):
             mm = minimega.connect()
 
         sys.stdout.close()
-        sys.stdout = sys.__stdout__
+        sys.stdout = saved_stdout
 
         return mm
 

@@ -65,7 +65,7 @@ class CC(ComponentBase):
                     validator = cmd.get('validator', None)
                     wait      = cmd.get('wait', False)
                     once      = cmd.get('once', True)
-
+                    
                     if validator:
                         wait = True # force waiting so validation can occur
 
