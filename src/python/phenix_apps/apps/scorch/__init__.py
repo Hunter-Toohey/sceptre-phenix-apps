@@ -152,23 +152,17 @@ class ComponentBase(object):
         # we use a lambda function because level and msg do not exist until the logger calls this function
         logger.log = lambda level, msg: self.buffer_logger_log(level, msg, log_buffer, orig_logger_log)
 
-        orig_stdout = sys.stdout
-        orig_stderr = sys.stderr
-
-        sys.stdout = TeeIO(orig_stdout, stdout_buffer)
-        sys.stderr = TeeIO(orig_stderr, stderr_buffer)
-
         start = time.time()
-        
+
+        # redirect stdout and stderr to our buffers
         try:
-            out = stages_dict[self.stage]() or ""
+            with redirect_stdout(stdout_buffer), redirect_stderr(stderr_buffer):
+                out = stages_dict[self.stage]() or ""
         except Exception as ex:
             out = f"Error occurred: {ex}"
         finally:
-            #stdout_buffer.flush()
-            #stderr_buffer.flush()
-            sys.stdout = orig_stdout
-            sys.stderr = orig_stderr
+            stdout_buffer.flush()
+            stderr_buffer.flush()
             logger.log = orig_logger_log
 
         end = time.time()
