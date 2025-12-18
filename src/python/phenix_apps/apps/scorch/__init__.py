@@ -204,17 +204,13 @@ class ComponentBase(object):
 
         with open('/dev/null', 'w') as devnull:
             with redirect_stdout(devnull):
-                mm = minimega.connect(namespace=self.exp_name)
+                if namespaced:
+                    return minimega.connect(namespace=self.exp_name)
+                else:
+                    return minimega.connect()
 
-        mm = None
-
-        if namespaced:
-            mm = minimega.connect(namespace=self.exp_name)
-        else:
-            mm = minimega.connect()
-
-        sys.stdout.close()
-        sys.stdout = sys.__stdout__
+        #sys.stdout.close()
+        #sys.stdout = sys.__stdout__
 
         return mm
 
