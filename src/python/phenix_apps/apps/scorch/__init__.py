@@ -132,12 +132,16 @@ class ComponentBase(object):
         # we use a lambda function because level and msg do not exist until the logger calls this function
         logger.log = lambda level, msg: self.buffer_logger_log(level, msg, log_buffer, orig_logger_log)
 
+        orig_stdout = sys.stdout
+        orig_stderr = sys.stderr
+
+        sys.stdout = TeeIO(orig_stdout, stdout_buffer)
+        sys.stderr = TeeIO(orig_stderr, stderr_buffer)
+
         start = time.time()
         
-        # redirect stdout and stderr to our buffers
         try:
-            with redirect_stdout(stdout_buffer), redirect_stderr(stderr_buffer):
-                out = stages_dict[self.stage]() or ""
+            out = stages_dict[self.stage]() or ""
         except Exception as ex:
             out = f"Error occurred: {ex}"
         finally:
@@ -168,6 +172,23 @@ class ComponentBase(object):
         }
         with open(info_file, 'w') as f:
             json.dump(content, f, indent=4)
+    
+    class TeeIO:
+        """
+        Class that duplicates stdout and stderr to a buffer as well as
+        the normal stream
+        """
+        def __init__(self, original, buffer):
+            self.original = original
+            self.buffer = buffer
+
+        def write(self, s):
+            self.original.write(s)
+            self.buffer.write(s)
+
+        def flush(self):
+            self.original.flush()
+            self.buffer.flush()
 
     # override phenix's logger buffer_logger_log to also save to our buffer
     def buffer_logger_log(self, level, msg, log_buffer, orig_logger_log):
@@ -202,15 +223,17 @@ class ComponentBase(object):
         a version mismatch. This utility function prevents that from happening.
         """
 
-        with open('/dev/null', 'w') as devnull:
-            with redirect_stdout(devnull):
-                if namespaced:
-                    return minimega.connect(namespace=self.exp_name)
-                else:
-                    return minimega.connect()
+        sys.stdout = open('/dev/null', 'w')
 
-        #sys.stdout.close()
-        #sys.stdout = sys.__stdout__
+        mm = None
+
+        if namespaced:
+            mm = minimega.connect(namespace=self.exp_name)
+        else:
+            mm = minimega.connect()
+
+        sys.stdout.close()
+        sys.stdout = sys.__stdout__
 
         return mm
 
