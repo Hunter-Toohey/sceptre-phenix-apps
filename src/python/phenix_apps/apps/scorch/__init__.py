@@ -202,7 +202,9 @@ class ComponentBase(object):
         a version mismatch. This utility function prevents that from happening.
         """
 
-        sys.stdout = open('/dev/null', 'w')
+        with open('/dev/null', 'w') as devnull:
+            with redirect_stdout(devnull):
+                mm = minimega.connect(namespace=self.exp_name)
 
         mm = None
 
