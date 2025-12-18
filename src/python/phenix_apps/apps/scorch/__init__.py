@@ -6,7 +6,6 @@ import time
 from typing import List, Optional, Tuple, Union
 from pathlib import Path
 import io
-from contextlib import redirect_stdout, redirect_stderr
 import json
 
 from phenix_apps.common.settings import PHENIX_DIR
@@ -157,7 +156,6 @@ class ComponentBase(object):
 
         start = time.time()
 
-        # redirect stdout and stderr to our buffers
         try:
             out = stages_dict[self.stage]() or ""
         except Exception as ex:
@@ -177,18 +175,18 @@ class ComponentBase(object):
         info_file = os.path.join(self.base_dir, f'{self.exp_name}-run-{self.run}-{self.name}-loop-{self.loop}-count-{self.count}-{self.stage}-{start_ts}-info.json')
 
         content = {
-            "experiment": self.exp_name,
-            "run": self.run,
-            "component": self.name,
-            "loop": self.loop,
-            "count": self.count,
-            "stage": self.stage,
-            "start_time": start_ts,
-            "end_time": end_ts,
-            "return": out,
-            "stdout": self.format_stream(stdout_buffer.getvalue()),
-            "stderr": self.format_stream(stderr_buffer.getvalue()),
-            "logs": self.format_stream(log_buffer.getvalue())
+          "experiment": self.exp_name,
+          "run": self.run,
+          "component": self.name,
+          "loop": self.loop,
+          "count": self.count,
+          "stage": self.stage,
+          "start_time": start_ts,
+          "end_time": end_ts,
+          "return": out,
+          "stdout": self.format_stream(stdout_buffer.getvalue()),
+          "stderr": self.format_stream(stderr_buffer.getvalue()),
+          "logs": self.format_stream(log_buffer.getvalue())
         }
         with open(info_file, 'w') as f:
             json.dump(content, f, indent=4)
