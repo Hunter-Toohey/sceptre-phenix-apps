@@ -245,7 +245,7 @@ class ComponentBase(object):
 
         sys.stdout.close()
         #sys.stdout = saved_stdout
-        sys.stdout = __sys.stdout__
+        sys.stdout = sys.__stdout__
 
         return mm
 
