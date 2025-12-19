@@ -148,8 +148,8 @@ class ComponentBase(object):
         start = time.time()
 
         try:
-            sys.stdout = Tee(orig_stdout_stream, f_out, stdout_buffer)
-            sys.stderr = Tee(orig_stderr_stream, f_err, stderr_buffer)
+            sys.stdout = Tee(orig_stdout_stream, stdout_buffer)
+            sys.stderr = Tee(orig_stderr_stream, stderr_buffer)
 
             out = stages_dict[self.stage]() or ""
         except Exception as ex:
