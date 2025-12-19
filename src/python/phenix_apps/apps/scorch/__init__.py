@@ -232,7 +232,7 @@ class ComponentBase(object):
         a version mismatch. This utility function prevents that from happening.
         """
 
-        #saved_stdout = sys.stdout
+        saved_stdout = sys.stdout
 
         sys.stdout = open('/dev/null', 'w')
 
@@ -244,8 +244,7 @@ class ComponentBase(object):
             mm = minimega.connect()
 
         sys.stdout.close()
-        #sys.stdout = saved_stdout
-        sys.stdout = sys.__stdout__
+        sys.stdout = saved_stdout
 
         return mm
 
