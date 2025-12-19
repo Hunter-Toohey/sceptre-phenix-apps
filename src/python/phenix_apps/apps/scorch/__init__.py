@@ -49,6 +49,7 @@ class ComponentBase(object):
         print(msg, file=sys.stderr)
 
         if ui:
+            tstamp = time.strftime('%Y-%m-%dT%H-%M-%SZ')
             tstamp = time.strftime('%H:%M:%S')
             print(f'[{tstamp}] ERROR : {msg}', flush=True)
 
@@ -62,6 +63,7 @@ class ComponentBase(object):
         """
 
         if ts:
+            tstamp = time.strftime('%Y-%m-%dT%H-%M-%SZ')
             tstamp = time.strftime('%H:%M:%S')
             print(f'[{tstamp}] {msg}', flush=True)
         else:
@@ -148,10 +150,17 @@ class ComponentBase(object):
 
         end = time.time()
 
-        start_ts = time.strftime("%Y-%m-%dT%H-%M-%SZ", time.gmtime(start))
-        end_ts = time.strftime("%Y-%m-%dT%H-%M-%SZ", time.gmtime(end))
-        
-        info_file = os.path.join(self.base_dir, f'{self.exp_name}-scorch-run-{self.run}-{self.name}-loop-{self.loop}-count-{self.count}-{self.stage}-{start_ts}.json')
+        # RFC3339 format timestamps
+        start_ts = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(start))
+        end_ts = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(end))
+
+        # filenames can't have colons, so replace with dashes
+        start_ts_filename = time.strftime("%Y-%m-%dT%H-%M-%SZ", time.gmtime(start))
+
+        info_file = os.path.join(
+            self.base_dir,
+            f'{self.exp_name}-scorch-run-{self.run}-{self.name}-loop-{self.loop}-count-{self.count}-{self.stage}-{start_ts_filename}.json',
+        )
 
         content = {
           "experiment_name": self.exp_name,
