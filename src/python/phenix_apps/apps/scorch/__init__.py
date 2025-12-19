@@ -130,13 +130,11 @@ class ComponentBase(object):
             'cleanup'   : self.cleanup
         }
 
-        stdout_path = os.path.join(self.base_dir, "stdout.txt")
-        stderr_path = os.path.join(self.base_dir, "stderr.txt")        
+        #stdout_path = os.path.join(self.base_dir, "stdout.txt")
+        #stderr_path = os.path.join(self.base_dir, "stderr.txt")        
 
-        # create the buffer that will capture logger log
+        # create the buffer that will capture logger log, stdout, and stderr
         log_buffer = io.StringIO()
-        
-        # create the buffers that will capture stdout and stderr    
         stdout_buffer = io.StringIO()
         stderr_buffer = io.StringIO()
 
@@ -150,11 +148,10 @@ class ComponentBase(object):
         start = time.time()
 
         try:
-            with open(stdout_path, "w") as f_out, open(stderr_path, "w") as f_err:
-                sys.stdout = Tee(orig_stdout_stream, f_out, stdout_buffer)
-                sys.stderr = Tee(orig_stderr_stream, f_err, stderr_buffer)
+            sys.stdout = Tee(orig_stdout_stream, f_out, stdout_buffer)
+            sys.stderr = Tee(orig_stderr_stream, f_err, stderr_buffer)
 
-                out = stages_dict[self.stage]() or ""
+            out = stages_dict[self.stage]() or ""
         except Exception as ex:
             out = f"Error occurred: {ex}"
         finally:
