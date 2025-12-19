@@ -50,7 +50,6 @@ class ComponentBase(object):
 
         if ui:
             tstamp = time.strftime('%Y-%m-%dT%H-%M-%SZ')
-            tstamp = time.strftime('%H:%M:%S')
             print(f'[{tstamp}] ERROR : {msg}', flush=True)
 
         logger.log("ERROR", msg)  # write error to phenix log file
@@ -64,7 +63,6 @@ class ComponentBase(object):
 
         if ts:
             tstamp = time.strftime('%Y-%m-%dT%H-%M-%SZ')
-            tstamp = time.strftime('%H:%M:%S')
             print(f'[{tstamp}] {msg}', flush=True)
         else:
             print(msg, flush=True)
