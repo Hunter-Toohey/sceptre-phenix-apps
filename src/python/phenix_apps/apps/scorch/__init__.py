@@ -154,8 +154,8 @@ class ComponentBase(object):
         info_file = os.path.join(self.base_dir, f'{self.exp_name}-scorch-run-{self.run}-{self.name}-loop-{self.loop}-count-{self.count}-{self.stage}-{start_ts}.json')
 
         content = {
-          "experimentName": self.exp_name,
-          "scorchRunName": self.run,
+          "experiment_name": self.exp_name,
+          "scorch_run_name": self.run,
           "component": self.name,
           "loop": self.loop,
           "count": self.count,
