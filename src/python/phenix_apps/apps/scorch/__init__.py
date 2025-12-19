@@ -139,16 +139,14 @@ class ComponentBase(object):
             'cleanup'   : self.cleanup
         }
 
-        stdout_mirror = MirrorAndBuffer(orig_stdout_stream, stdout_path, io.StringIO())
-        stderr_mirror = MirrorAndBuffer(orig_stderr_stream, stderr_path, io.StringIO())   
-
         # mirror logger log, stdout, and stderr
         log_buffer = io.StringIO()
-        stdout_mirror = FileMirror(stdout_path)
-        stderr_mirror = FileMirror(stderr_path)
 
         orig_logger_log = logger.log
         orig_stdout_stream, orig_stderr_stream = sys.stdout, sys.stderr
+
+        stdout_mirror = MirrorAndBuffer(orig_stdout_stream, stdout_path, io.StringIO())
+        stderr_mirror = MirrorAndBuffer(orig_stderr_stream, stderr_path, io.StringIO())   
 
         # override phenix's logger to save to the buffer
         # we use a lambda function because level and msg do not exist until the logger calls this function
