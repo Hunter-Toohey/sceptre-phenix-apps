@@ -17,23 +17,26 @@ from elasticsearch import Elasticsearch
 import minimega
 
 class MirrorAndBuffer:
-    def __init__(self, orig_stream, file_path, buffer):
+    def __init__(self, orig_stream, buffer, file_path: Optional[str] = None):
         self.orig_stream = orig_stream
-        self.file = open(file_path, "w")
         self.buffer = buffer
+        self.file = open(file_path, "w") if file_path else None
 
     def write(self, s):
         self.orig_stream.write(s)
-        self.file.write(s)
         self.buffer.write(s)
+        if self.file:
+            self.file.write(s)
         self.orig_stream.flush()
-        self.file.flush()
         self.buffer.flush()
+        if self.file:
+            self.file.flush()
 
     def flush(self):
         self.orig_stream.flush()
-        self.file.flush()
         self.buffer.flush()
+        if self.file:
+            self.file.flush()
 
     def getvalue(self):
         return self.buffer.getvalue()
@@ -151,8 +154,8 @@ class ComponentBase(object):
         orig_logger_log = logger.log
         orig_stdout_stream, orig_stderr_stream = sys.stdout, sys.stderr
 
-        stdout_mirror = MirrorAndBuffer(orig_stdout_stream, stdout_path, io.StringIO())
-        stderr_mirror = MirrorAndBuffer(orig_stderr_stream, stderr_path, io.StringIO())
+        stdout_mirror = MirrorAndBuffer(orig_stdout_stream, io.StringIO(), file_path=None)
+        stderr_mirror = MirrorAndBuffer(orig_stderr_stream, io.StringIO(), file_path=None)
 
         # override phenix's logger to save to the buffer
         # we use a lambda function because level and msg do not exist until the logger calls this function
