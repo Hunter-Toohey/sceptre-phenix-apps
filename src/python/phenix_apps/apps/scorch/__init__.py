@@ -35,6 +35,9 @@ class MirrorAndBuffer:
         self.file.flush()
         self.buffer.flush()
 
+    def getvalue(self):
+        return self.buffer.getvalue()
+
 class ComponentBase(object):
     valid_stages = ["configure", "start", "stop", "cleanup"]
 
@@ -163,6 +166,8 @@ class ComponentBase(object):
         except Exception as ex:
             out = f"Error occurred: {ex}"
         finally:
+            stdout_mirror.file.close()
+            stderr_mirror.file.close()
             sys.stdout = orig_stdout_stream
             sys.stderr = orig_stderr_stream
             logger.log = orig_logger_log
