@@ -26,11 +26,9 @@ class TeeIO:
         self.encoding = getattr(self._primary, "encoding", "utf-8")
 
     def __getattr__(self, name):
-        # delegate attribute access to the primary stream where possible
         return getattr(self._primary, name)
 
     def write(self, s):
-        # accept bytes or str
         if isinstance(s, bytes):
             try:
                 s = s.decode(self.encoding, errors="replace")
@@ -38,11 +36,7 @@ class TeeIO:
                 s = str(s)
 
         for stream in self.streams:
-            try:
-                stream.write(s)
-            except Exception:
-                # ignore failures for individual streams
-                pass
+            stream.write(s)
         try:
             return len(s)
         except Exception:
@@ -50,27 +44,16 @@ class TeeIO:
 
     def flush(self):
         for stream in self.streams:
-            try:
-                stream.flush()
-            except Exception:
-                pass
+            stream.flush()
 
     def fileno(self):
-        # delegate to primary if available
-        try:
-            return self._primary.fileno()
-        except Exception:
-            raise OSError("fileno not available")
+        return self._primary.fileno()
 
     def isatty(self):
-        try:
-            return self._primary.isatty()
-        except Exception:
-            return False
+        return self._primary.isatty()
 
     @property
     def buffer(self):
-        # expose underlying buffer if primary has it
         return getattr(self._primary, "buffer", None)
 
     def writable(self):
