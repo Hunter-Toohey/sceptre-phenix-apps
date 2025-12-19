@@ -15,52 +15,16 @@ from box import Box
 from elasticsearch import Elasticsearch
 import minimega
 
-class TeeIO:
-    """
-    Class that duplicates stdout and stderr to a buffer as well as
-    the normal stream
-    """
-    def __init__(self, *streams):
-        self.streams = streams
-        self._primary = streams[0]
-        self.encoding = getattr(self._primary, "encoding", "utf-8")
-
-    def __getattr__(self, name):
-        return getattr(self._primary, name)
-
+class Tee:
+    def __init__(self, *files):
+        self.files = files
     def write(self, s):
-        if isinstance(s, bytes):
-            try:
-                s = s.decode(self.encoding, errors="replace")
-            except Exception:
-                s = str(s)
-
-        for stream in self.streams:
-            stream.write(s)
-        try:
-            return len(s)
-        except Exception:
-            return 0
-
+        for f in self.files:
+            f.write(s)
+            f.flush()
     def flush(self):
-        for stream in self.streams:
-            stream.flush()
-
-    def fileno(self):
-        return self._primary.fileno()
-
-    def isatty(self):
-        return self._primary.isatty()
-
-    @property
-    def buffer(self):
-        return getattr(self._primary, "buffer", None)
-
-    def writable(self):
-        try:
-            return self._primary.writable()
-        except Exception:
-            return True
+        for f in self.files:
+            f.flush()
 
 class ComponentBase(object):
     valid_stages = ["configure", "start", "stop", "cleanup"]
@@ -166,18 +130,14 @@ class ComponentBase(object):
             'cleanup'   : self.cleanup
         }
 
-        # create the buffers that will capture stdout, stderr, and the logger
-        stdout_buffer = io.StringIO()
-        stderr_buffer = io.StringIO()
+        stdout_path = os.path.join(self.base_dir, "stdout.txt")
+        stderr_path = os.path.join(self.base_dir, "stderr.txt")        
+
+        # create the buffer that will capture logger log
         log_buffer = io.StringIO()
 
         orig_logger_log = logger.log
-        orig_stdout_stream = sys.stdout
-        orig_stderr_stream = sys.stderr
-
-        # override stdout and stderr to use our custom teeIO class to save to our buffers
-        sys.stdout = TeeIO(orig_stdout_stream, stdout_buffer)
-        sys.stderr = TeeIO(orig_stderr_stream, stderr_buffer)
+        orig_stdout_stream, orig_stderr_stream = sys.stdout, sys.stderr
 
         # override phenix's logger to save to the buffer
         # we use a lambda function because level and msg do not exist until the logger calls this function
@@ -186,12 +146,14 @@ class ComponentBase(object):
         start = time.time()
 
         try:
-            out = stages_dict[self.stage]() or ""
+            with open(stdout_path, "w") as f_out, open(stderr_path, "w") as f_err:
+                sys.stdout = Tee(orig_stdout_stream, f_out, stdout_buffer)
+                sys.stderr = Tee(orig_stderr_stream, f_err, stderr_buffer)
+
+                out = stages_dict[self.stage]() or ""
         except Exception as ex:
             out = f"Error occurred: {ex}"
         finally:
-            stdout_buffer.flush()
-            stderr_buffer.flush()
             sys.stdout = orig_stdout_stream
             sys.stderr = orig_stderr_stream
             logger.log = orig_logger_log
