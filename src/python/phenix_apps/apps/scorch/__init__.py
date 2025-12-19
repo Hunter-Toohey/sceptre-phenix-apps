@@ -145,15 +145,12 @@ class ComponentBase(object):
             'cleanup'   : self.cleanup
         }
 
-        # mirror logger log, stdout, and stderr
-        log_buffer = io.StringIO()
-
-        stdout_path = os.path.join(self.base_dir, "stdout.txt")
-        stderr_path = os.path.join(self.base_dir, "stderr.txt")
-
         orig_logger_log = logger.log
         orig_stdout_stream, orig_stderr_stream = sys.stdout, sys.stderr
 
+        log_buffer = io.StringIO()
+
+        # mirror stdout and stderr
         stdout_mirror = MirrorAndBuffer(orig_stdout_stream, io.StringIO(), file_path=None)
         stderr_mirror = MirrorAndBuffer(orig_stderr_stream, io.StringIO(), file_path=None)
 
@@ -163,6 +160,7 @@ class ComponentBase(object):
 
         start = time.time()
 
+        # redirect stdout and stderr to mirror to our buffers
         try:
             with redirect_stdout(stdout_mirror), redirect_stderr(stderr_mirror):
                 out = stages_dict[self.stage]() or ""
@@ -182,7 +180,7 @@ class ComponentBase(object):
         start_ts = time.strftime("%Y-%m-%dT%H-%M-%SZ", time.gmtime(start))
         end_ts = time.strftime("%Y-%m-%dT%H-%M-%SZ", time.gmtime(end))
         
-        info_file = os.path.join(self.base_dir, f'{self.exp_name}-run-{self.run}-{self.name}-loop-{self.loop}-count-{self.count}-{self.stage}-{start_ts}-info.json')
+        info_file = os.path.join(self.base_dir, f'{self.exp_name}--scorch-run-{self.run}-{self.name}-loop-{self.loop}-count-{self.count}-{self.stage}-{start_ts}.json')
 
         content = {
           "experiment": self.exp_name,
@@ -247,7 +245,7 @@ class ComponentBase(object):
 
         sys.stdout.close()
         #sys.stdout = saved_stdout
-        sys.stdout = __sys_stdout__
+        sys.stdout = __sys.stdout__
 
         return mm
 
