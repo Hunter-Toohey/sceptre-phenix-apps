@@ -49,7 +49,7 @@ class ComponentBase(object):
         print(msg, file=sys.stderr)
 
         if ui:
-            tstamp = time.strftime('%Y-%m-%dT%H-%M-%SZ')
+            tstamp = time.strftime('%Y-%m-%dT%H:%M:%SZ')
             print(f'[{tstamp}] ERROR : {msg}', flush=True)
 
         logger.log("ERROR", msg)  # write error to phenix log file
@@ -62,7 +62,7 @@ class ComponentBase(object):
         """
 
         if ts:
-            tstamp = time.strftime('%Y-%m-%dT%H-%M-%SZ')
+            tstamp = time.strftime('%Y-%m-%dT%H:%M:%SZ')
             print(f'[{tstamp}] {msg}', flush=True)
         else:
             print(msg, flush=True)
@@ -180,7 +180,7 @@ class ComponentBase(object):
     # override phenix's logger buffer_logger_log to also save to our buffer
     def buffer_logger_log(self, level, msg, log_buffer, orig_logger_log):
         try:
-            tstamp = time.strftime("%Y-%m-%dT%H-%M-%SZ")
+            tstamp = time.strftime("%Y-%m-%dT%H:%M:%SZ")
             log_buffer.write(f'[{tstamp}] {level} : {msg}\n')
         except Exception as ex:
             print(f"Error writing to log buffer: {ex}")
