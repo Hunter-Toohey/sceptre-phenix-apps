@@ -16,31 +16,6 @@ from box import Box
 from elasticsearch import Elasticsearch
 import minimega
 
-class MirrorAndBuffer:
-    def __init__(self, orig_stream, buffer, file_path: Optional[str] = None):
-        self.orig_stream = orig_stream
-        self.buffer = buffer
-        self.file = open(file_path, "w") if file_path else None
-
-    def write(self, s):
-        self.orig_stream.write(s)
-        self.buffer.write(s)
-        if self.file:
-            self.file.write(s)
-        self.orig_stream.flush()
-        self.buffer.flush()
-        if self.file:
-            self.file.flush()
-
-    def flush(self):
-        self.orig_stream.flush()
-        self.buffer.flush()
-        if self.file:
-            self.file.flush()
-
-    def getvalue(self):
-        return self.buffer.getvalue()
-
 class ComponentBase(object):
     valid_stages = ["configure", "start", "stop", "cleanup"]
 
@@ -146,13 +121,13 @@ class ComponentBase(object):
         }
 
         orig_logger_log = logger.log
-        orig_stdout_stream, orig_stderr_stream = sys.stdout, sys.stderr
-
+        orig_stdout_stream = sys.stdout
+        orig_stderr_stream = sys.stderr
         log_buffer = io.StringIO()
 
         # mirror stdout and stderr
-        stdout_mirror = MirrorAndBuffer(orig_stdout_stream, io.StringIO(), file_path=None)
-        stderr_mirror = MirrorAndBuffer(orig_stderr_stream, io.StringIO(), file_path=None)
+        stdout_mirror = MirrorAndBuffer(orig_stdout_stream, io.StringIO())
+        stderr_mirror = MirrorAndBuffer(orig_stderr_stream, io.StringIO())
 
         # override phenix's logger to save to the buffer
         # we use a lambda function because level and msg do not exist until the logger calls this function
@@ -167,10 +142,6 @@ class ComponentBase(object):
         except Exception as ex:
             out = f"Error occurred: {ex}"
         finally:
-            if stdout_mirror.file:
-                stdout_mirror.file.close()
-            if stderr_mirror.file:
-                stderr_mirror.file.close()
             sys.stdout = orig_stdout_stream
             sys.stderr = orig_stderr_stream
             logger.log = orig_logger_log
@@ -180,7 +151,7 @@ class ComponentBase(object):
         start_ts = time.strftime("%Y-%m-%dT%H-%M-%SZ", time.gmtime(start))
         end_ts = time.strftime("%Y-%m-%dT%H-%M-%SZ", time.gmtime(end))
         
-        info_file = os.path.join(self.base_dir, f'{self.exp_name}--scorch-run-{self.run}-{self.name}-loop-{self.loop}-count-{self.count}-{self.stage}-{start_ts}.json')
+        info_file = os.path.join(self.base_dir, f'{self.exp_name}-scorch-run-{self.run}-{self.name}-loop-{self.loop}-count-{self.count}-{self.stage}-{start_ts}.json')
 
         content = {
           "experimentName": self.exp_name,
@@ -451,3 +422,24 @@ class ComponentBase(object):
 
     def cleanup(self):
         pass
+
+class MirrorAndBuffer:
+    """
+    Overwrites a stream to mirror output to the original stream and a buffer
+    """
+
+    def __init__(self, orig_stream, buffer):
+        self.orig_stream = orig_stream
+        self.buffer = buffer
+
+    def write(self, s):
+        self.orig_stream.write(s)
+        self.buffer.write(s)
+        self.orig_stream.flush()
+        self.buffer.flush()
+    def flush(self):
+        self.orig_stream.flush()
+        self.buffer.flush()
+
+    def getvalue(self):
+        return self.buffer.getvalue()
