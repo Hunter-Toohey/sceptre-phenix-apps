@@ -5,6 +5,7 @@ import sys
 import time
 from typing import List, Optional, Tuple, Union
 from pathlib import Path
+from contextlib import redirect_stdout, redirect_stderr
 import io
 import json
 
@@ -15,16 +16,24 @@ from box import Box
 from elasticsearch import Elasticsearch
 import minimega
 
-class Tee:
-    def __init__(self, *files):
-        self.files = files
+class MirrorAndBuffer:
+    def __init__(self, orig_stream, file_path, buffer):
+        self.orig_stream = orig_stream
+        self.file = open(file_path, "w")
+        self.buffer = buffer
+
     def write(self, s):
-        for f in self.files:
-            f.write(s)
-            f.flush()
+        self.orig_stream.write(s)
+        self.file.write(s)
+        self.buffer.write(s)
+        self.orig_stream.flush()
+        self.file.flush()
+        self.buffer.flush()
+
     def flush(self):
-        for f in self.files:
-            f.flush()
+        self.orig_stream.flush()
+        self.file.flush()
+        self.buffer.flush()
 
 class ComponentBase(object):
     valid_stages = ["configure", "start", "stop", "cleanup"]
@@ -130,13 +139,13 @@ class ComponentBase(object):
             'cleanup'   : self.cleanup
         }
 
-        #stdout_path = os.path.join(self.base_dir, "stdout.txt")
-        #stderr_path = os.path.join(self.base_dir, "stderr.txt")        
+        stdout_mirror = MirrorAndBuffer(orig_stdout_stream, stdout_path, io.StringIO())
+        stderr_mirror = MirrorAndBuffer(orig_stderr_stream, stderr_path, io.StringIO())   
 
-        # create the buffer that will capture logger log, stdout, and stderr
+        # mirror logger log, stdout, and stderr
         log_buffer = io.StringIO()
-        stdout_buffer = io.StringIO()
-        stderr_buffer = io.StringIO()
+        stdout_mirror = FileMirror(stdout_path)
+        stderr_mirror = FileMirror(stderr_path)
 
         orig_logger_log = logger.log
         orig_stdout_stream, orig_stderr_stream = sys.stdout, sys.stderr
@@ -148,10 +157,8 @@ class ComponentBase(object):
         start = time.time()
 
         try:
-            sys.stdout = Tee(orig_stdout_stream, stdout_buffer)
-            sys.stderr = Tee(orig_stderr_stream, stderr_buffer)
-
-            out = stages_dict[self.stage]() or ""
+            with redirect_stdout(stdout_mirror), redirect_stderr(stderr_mirror):
+                out = stages_dict[self.stage]() or ""
         except Exception as ex:
             out = f"Error occurred: {ex}"
         finally:
@@ -176,8 +183,8 @@ class ComponentBase(object):
           "start_time": start_ts,
           "end_time": end_ts,
           "return": out,
-          "stdout": self.format_stream(stdout_buffer.getvalue()),
-          "stderr": self.format_stream(stderr_buffer.getvalue()),
+          "stdout": self.format_stream(stdout_mirror.getvalue()),
+          "stderr": self.format_stream(stderr_mirror.getvalue()),
           "logs": self.format_stream(log_buffer.getvalue())
         }
         with open(info_file, 'w') as f:
