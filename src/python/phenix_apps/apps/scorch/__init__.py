@@ -135,6 +135,10 @@ class ComponentBase(object):
 
         # create the buffer that will capture logger log
         log_buffer = io.StringIO()
+        
+        # create the buffers that will capture stdout and stderr    
+        stdout_buffer = io.StringIO()
+        stderr_buffer = io.StringIO()
 
         orig_logger_log = logger.log
         orig_stdout_stream, orig_stderr_stream = sys.stdout, sys.stderr
