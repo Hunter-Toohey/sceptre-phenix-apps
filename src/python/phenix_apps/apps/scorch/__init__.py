@@ -126,8 +126,8 @@ class ComponentBase(object):
         log_buffer = io.StringIO()
 
         # mirror stdout and stderr
-        stdout_mirror = MirrorAndBuffer(orig_stdout_stream, io.StringIO())
-        stderr_mirror = MirrorAndBuffer(orig_stderr_stream, io.StringIO())
+        stdout_mirror = _MirrorAndBuffer(orig_stdout_stream, io.StringIO())
+        stderr_mirror = _MirrorAndBuffer(orig_stderr_stream, io.StringIO())
 
         # override phenix's logger to save to the buffer
         # we use a lambda function because level and msg do not exist until the logger calls this function
@@ -163,9 +163,9 @@ class ComponentBase(object):
           "start": start_ts,
           "end": end_ts,
           "return": out,
-          "stdout": self.format_stream(stdout_mirror.getvalue()),
-          "stderr": self.format_stream(stderr_mirror.getvalue()),
-          "logs": self.format_stream(log_buffer.getvalue())
+          "stdout": self._format_stream(stdout_mirror.getvalue()),
+          "stderr": self._format_stream(stderr_mirror.getvalue()),
+          "logs": self._format_stream(log_buffer.getvalue())
         }
         with open(info_file, 'w') as f:
             json.dump(content, f, indent=4)
@@ -179,7 +179,7 @@ class ComponentBase(object):
             print(f"Error writing to log buffer: {ex}")
         orig_logger_log(level, msg)
 
-    def format_stream(self, s):
+    def _format_stream(self, s):
         if not s:
             return []
         return [ln.strip() for ln in s.splitlines() if ln.strip()]
@@ -423,7 +423,7 @@ class ComponentBase(object):
     def cleanup(self):
         pass
 
-class MirrorAndBuffer:
+class _MirrorAndBuffer:
     """
     Overwrites a stream to mirror output to the original stream and a buffer
     """
