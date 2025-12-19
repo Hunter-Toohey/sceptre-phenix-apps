@@ -22,16 +22,62 @@ class TeeIO:
     """
     def __init__(self, *streams):
         self.streams = streams
-        self.encoding = getattr(streams[0], "encoding", "utf-8")
+        self._primary = streams[0]
+        self.encoding = getattr(self._primary, "encoding", "utf-8")
+
+    def __getattr__(self, name):
+        # delegate attribute access to the primary stream where possible
+        return getattr(self._primary, name)
 
     def write(self, s):
+        # accept bytes or str
+        if isinstance(s, bytes):
+            try:
+                s = s.decode(self.encoding, errors="replace")
+            except Exception:
+                s = str(s)
+
         for stream in self.streams:
-            stream.write(s)
-        return len(s)
+            try:
+                stream.write(s)
+            except Exception:
+                # ignore failures for individual streams
+                pass
+        try:
+            return len(s)
+        except Exception:
+            return 0
 
     def flush(self):
         for stream in self.streams:
-            stream.flush()
+            try:
+                stream.flush()
+            except Exception:
+                pass
+
+    def fileno(self):
+        # delegate to primary if available
+        try:
+            return self._primary.fileno()
+        except Exception:
+            raise OSError("fileno not available")
+
+    def isatty(self):
+        try:
+            return self._primary.isatty()
+        except Exception:
+            return False
+
+    @property
+    def buffer(self):
+        # expose underlying buffer if primary has it
+        return getattr(self._primary, "buffer", None)
+
+    def writable(self):
+        try:
+            return self._primary.writable()
+        except Exception:
+            return True
 
 class ComponentBase(object):
     valid_stages = ["configure", "start", "stop", "cleanup"]
